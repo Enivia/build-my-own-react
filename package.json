@@ -1,0 +1,16 @@
+{
+  "name": "build-my-own-react",
+  "version": "1.0.0",
+  "repository": "git@github.com:Enivia/build-my-own-react.git",
+  "author": "Enivia",
+  "license": "MIT",
+  "scripts": {
+    "start": "./node_modules/.bin/babel src --out-dir dist && parcel index.html"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.17.0",
+    "@babel/core": "^7.17.2",
+    "@babel/preset-react": "^7.16.7",
+    "parcel": "^2.2.1"
+  }
+}
