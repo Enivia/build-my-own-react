@@ -1,5 +1,7 @@
 const TEXT_ELEMENT = "TEXT_ELEMENT";
 
+let nextUnitOfWork = null;
+
 function createTextElement(text) {
   return {
     type: TEXT_ELEMENT,
@@ -22,20 +24,76 @@ function createElement(type, props, ...children) {
 }
 
 function render(element, container) {
-  // create dom
+  nextUnitOfWork = {
+    dom: container,
+    props: {
+      children: [element],
+    },
+  };
+}
+
+function createDom(fiber) {
   const dom =
-    element.type == TEXT_ELEMENT
+    fiber.type == TEXT_ELEMENT
       ? document.createTextNode("")
-      : document.createElement(element.type);
-  const { children, ...props } = element.props;
-  // recursive create children
-  children.forEach((child) => render(child, dom));
+      : document.createElement(fiber.type);
+  const { children, ...props } = fiber.props;
   // assign props
   Object.keys(props).forEach((name) => {
     dom[name] = props[name];
   });
-  container.appendChild(dom);
+  return dom;
 }
+
+function performUnitOfWork(fiber) {
+  // add element to dom
+  if (!fiber.dom) {
+    fiber.dom = createDom(fiber);
+  }
+  if (fiber.parent) {
+    fiber.parent.dom.appendChild(fiber.dom);
+  }
+
+  // create fibers for children
+  const children = fiber.props.children;
+  let prevSibling = null;
+  children.forEach((child, index) => {
+    const currentFiber = {
+      type: child.type,
+      props: child.props,
+      parent: fiber,
+    };
+
+    if (index === 0) {
+      fiber.child = currentFiber;
+    } else {
+      prevSibling.sibling = currentFiber;
+    }
+    prevSibling = currentFiber;
+  });
+
+  // return next unit of work
+  if (fiber.child) {
+    return fiber.child;
+  }
+  let nextFiber = fiber;
+  while (nextFiber) {
+    if (nextFiber.sibling) {
+      return nextFiber.sibling;
+    }
+    nextFiber = nextFiber.parent;
+  }
+}
+
+function workLoop(deadline) {
+  let shouldYield = false;
+  while (nextUnitOfWork && !shouldYield) {
+    nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
+    shouldYield = deadline.timeRemaining() < 1;
+  }
+  requestIdleCallback(workLoop);
+}
+requestIdleCallback(workLoop);
 
 const Doact = {
   createElement,
